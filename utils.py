@@ -64,6 +64,23 @@ class ReplayBuffer(object):
 		self.size = self.state.shape[0]
 		self.addReturn(dataset)
 
+	def change_replay(self,trained_value):
+		tensor_state  = torch.FloatTensor(self.state).to(self.device)
+		tensor_Return = torch.FloatTensor(self.Return).to(self.device)
+		rv = tensor_Return - trained_value(tensor_state)
+		idx = torch.where(rv > 0)[0].cpu().detach().numpy()
+		print(self.state.shape,self.action.shape,self.next_state.shape,self.reward.shape,self.not_done.shape,self.Return.shape)
+		self.state      = self.state[idx]
+		self.action     = self.action[idx]
+		self.next_state = self.next_state[idx]
+		self.reward     = self.reward[idx]
+		self.not_done   = self.not_done[idx]
+		self.Return     = self.Return[idx]
+		self.size      = self.state.shape[0]
+		print(self.state.shape, self.action.shape, self.next_state.shape, self.reward.shape, self.not_done.shape,self.Return.shape)
+
+
+
 
 
 	def normalize_states(self, eps = 1e-3):

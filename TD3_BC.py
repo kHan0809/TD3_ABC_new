@@ -185,16 +185,15 @@ class TD3_BC(object):
 				with torch.no_grad():
 					v_value = self.value(state)
 					rv = Return - v_value
-					idx = torch.where(rv > 0)[0]
-					weight = (torch.exp((rv[idx]) / 5.0)).clamp(0.0, 0.5)
+					weight = (torch.exp(rv/5.0)).clamp(1.0, 1.5)
 
 				# Compute actor loss
 				pi = self.actor(state)
-				Q = self.critic.Q1(state, pi)[idx]
+				Q = self.critic.Q1(state, pi)
 
 				lmbda = self.alpha / Q.abs().mean().detach()
 
-				actor_loss = -lmbda * Q.mean() + torch.mean(((pi[idx] - action[idx]) ** 2) * weight.reshape(-1, 1))
+				actor_loss = -lmbda * Q.mean() + torch.mean(((pi - action) ** 2) * weight.reshape(-1, 1))
 
 			else:
 				# Compute actor loss

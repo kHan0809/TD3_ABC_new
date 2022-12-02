@@ -1,3 +1,5 @@
+import copy
+
 import numpy as np
 import torch
 import gym
@@ -42,7 +44,7 @@ if __name__ == "__main__":
 	parser.add_argument("--seed", default=1, type=int)              # Sets Gym, PyTorch and Numpy seeds
 	parser.add_argument("--eval_freq", default=5e3, type=int)       # How often (time steps) we evaluate
 	parser.add_argument("--max_timesteps",   default=1e6, type=int)   # Max time steps to run environment
-	parser.add_argument("--max_timesteps_Q", default=3e4, type=int)  # Max time steps to run environment
+	parser.add_argument("--max_timesteps_Q", default=1e4, type=int, help="3e4")  # Max time steps to run environment
 	parser.add_argument("--save_model", action="store_true")        # Save model and optimizer parameters
 	parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
 	# TD3
@@ -116,9 +118,17 @@ if __name__ == "__main__":
 			v=policy.test_v(replay_buffer, args.batch_size)
 			print("[steps] :", t+1,"v : ", sum(v)/float(args.batch_size))
 
+	replay_buffer_dot = copy.deepcopy(replay_buffer)
+	replay_buffer_dot.change_replay(policy.value)
+
+
+
 	evaluations = []
 	for t in range(int(args.max_timesteps)):
-		policy.train(replay_buffer, t, args.batch_size,args.clutch)
+		if t > args.clutch:
+			policy.train(replay_buffer_dot, t, args.batch_size,args.clutch)
+		else:
+			policy.train(replay_buffer, t, args.batch_size, args.clutch)
 		# Evaluate episode
 		if (t + 1) % args.eval_freq == 0:
 			print(f"Time steps: {t+1}")
