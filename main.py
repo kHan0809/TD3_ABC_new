@@ -106,7 +106,7 @@ if __name__ == "__main__":
 		policy.load(f"./models/{policy_file}")
 
 	replay_buffer = utils.ReplayBuffer(state_dim, action_dim)
-	replay_buffer.convert_D4RL(d4rl.qlearning_dataset(env))
+	replay_buffer.convert_D4RL(env.get_dataset())
 	if args.normalize:
 		mean,std = replay_buffer.normalize_states() 
 	else:
@@ -126,7 +126,7 @@ if __name__ == "__main__":
 	evaluations = []
 	for t in range(int(args.max_timesteps)):
 		if t > args.clutch:
-			policy.train(replay_buffer_dot, t, args.batch_size,args.clutch)
+			policy.train(replay_buffer_dot, t, args.batch_size, args.clutch)
 		else:
 			policy.train(replay_buffer, t, args.batch_size, args.clutch)
 		# Evaluate episode

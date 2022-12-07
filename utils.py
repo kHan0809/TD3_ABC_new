@@ -21,7 +21,7 @@ class ReplayBuffer(object):
 		Return_buffer = []
 		tmp_return = 0
 		for i in reversed(range(self.size)):
-			if dataset['terminals'][i] or i == (self.size - 1):
+			if dataset['terminals'][i] or dataset["timeouts"][i] or i == (self.size - 1):
 				tmp_return = dataset["rewards"][i]
 				Return_buffer.append(tmp_return)
 			else:
