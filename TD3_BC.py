@@ -194,7 +194,7 @@ class TD3_BC(object):
 				with torch.no_grad():
 					v_value = self.value(state)
 					rv = Return - v_value
-					weight = (torch.exp(rv/5.0)).clamp(0.0, 2.0)
+					weight = (torch.exp(rv/5.0)).clamp(0.0, 1.5)
 
 				# Compute actor loss
 				pi = self.actor(state)

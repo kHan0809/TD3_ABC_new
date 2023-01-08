@@ -121,15 +121,6 @@ if __name__ == "__main__":
 	replay_buffer_dot = copy.deepcopy(replay_buffer)
 	replay_buffer_dot.change_replay(policy.value)
 
-	policy.__init__(**kwargs)
-	for t in range(int(args.max_timesteps_Q)):
-		policy.train_v(replay_buffer_dot, args.batch_size)
-		if (t + 1) % args.eval_freq == 0:
-			v=policy.test_v(replay_buffer, args.batch_size)
-			print("[steps] :", t+1,"v : ", sum(v)/float(args.batch_size))
-
-
-
 
 	evaluations = []
 	for t in range(int(args.max_timesteps)):
