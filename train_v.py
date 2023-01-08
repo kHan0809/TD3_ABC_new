@@ -40,7 +40,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	# Experiment
 	parser.add_argument("--policy", default="TD3_BC")               # Policy name
-	parser.add_argument("--env", default="walker2d-medium-v2")        # OpenAI gym environment name
+	parser.add_argument("--env", default="hopper-medium-expert-v2")        # OpenAI gym environment name
 	parser.add_argument("--seed", default=1, type=int)              # Sets Gym, PyTorch and Numpy seeds
 	parser.add_argument("--eval_freq", default=5e3, type=int)       # How often (time steps) we evaluate
 	parser.add_argument("--max_timesteps",   default=1e6, type=int)   # Max time steps to run environment
@@ -118,8 +118,11 @@ if __name__ == "__main__":
 			v=policy.test_v(replay_buffer, args.batch_size)
 			print("[steps] :", t+1,"v : ", sum(v)/float(args.batch_size))
 
+	policy.save_v("v")
+
 	replay_buffer_dot = copy.deepcopy(replay_buffer)
-	replay_buffer_dot.change_replay(policy.value)
+	replay_buffer_dot.load_replay()
+
 
 	policy.__init__(**kwargs)
 	for t in range(int(args.max_timesteps_Q)):
@@ -128,18 +131,5 @@ if __name__ == "__main__":
 			v=policy.test_v(replay_buffer, args.batch_size)
 			print("[steps] :", t+1,"v : ", sum(v)/float(args.batch_size))
 
+	policy.save_v("v_prime")
 
-
-
-	evaluations = []
-	for t in range(int(args.max_timesteps)):
-		if t > args.clutch:
-			policy.train(replay_buffer_dot, t, args.batch_size, args.clutch)
-		else:
-			policy.train(replay_buffer, t, args.batch_size, args.clutch)
-		# Evaluate episode
-		if (t + 1) % args.eval_freq == 0:
-			print(f"Time steps: {t+1}")
-			evaluations.append(eval_policy(policy, args.env, args.seed, mean, std))
-			np.save(f"./results/{file_name}", evaluations)
-			if args.save_model: policy.save(f"./models/{file_name}")

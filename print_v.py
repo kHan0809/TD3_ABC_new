@@ -9,6 +9,7 @@ import d4rl
 
 import utils
 import TD3_BC
+import time
 
 
 # Runs policy for X episodes and returns D4RL score
@@ -40,7 +41,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	# Experiment
 	parser.add_argument("--policy", default="TD3_BC")               # Policy name
-	parser.add_argument("--env", default="walker2d-medium-v2")        # OpenAI gym environment name
+	parser.add_argument("--env", default="hopper-medium-expert-v2")        # OpenAI gym environment name
 	parser.add_argument("--seed", default=1, type=int)              # Sets Gym, PyTorch and Numpy seeds
 	parser.add_argument("--eval_freq", default=5e3, type=int)       # How often (time steps) we evaluate
 	parser.add_argument("--max_timesteps",   default=1e6, type=int)   # Max time steps to run environment
@@ -49,7 +50,7 @@ if __name__ == "__main__":
 	parser.add_argument("--load_model", default="")                 # Model load file name, "" doesn't load, "default" uses file_name
 	# TD3
 	parser.add_argument("--expl_noise", default=0.1)                # Std of Gaussian exploration noise
-	parser.add_argument("--batch_size", default=256, type=int)      # Batch size for both actor and critic
+	parser.add_argument("--batch_size", default=1, type=int)      # Batch size for both actor and critic
 	parser.add_argument("--discount", default=0.99)                 # Discount factor
 	parser.add_argument("--tau", default=0.005)                     # Target network update rate
 	parser.add_argument("--policy_noise", default=0.2)              # Noise added to target policy during critic update
@@ -99,11 +100,10 @@ if __name__ == "__main__":
 	}
 
 	# Initialize policy
-	policy = TD3_BC.TD3_BC(**kwargs)
-
-	if args.load_model != "":
-		policy_file = file_name if args.load_model == "default" else args.load_model
-		policy.load(f"./models/{policy_file}")
+	policy_v       = TD3_BC.TD3_BC(**kwargs)
+	policy_v_prime = TD3_BC.TD3_BC(**kwargs)
+	policy_v.load_v("v")
+	policy_v_prime.load_v("v_prime")
 
 	replay_buffer = utils.ReplayBuffer(state_dim, action_dim)
 	replay_buffer.convert_D4RL(env.get_dataset())
@@ -112,34 +112,75 @@ if __name__ == "__main__":
 	else:
 		mean,std = 0,1
 
-	for t in range(int(args.max_timesteps_Q)):
-		policy.train_v(replay_buffer, args.batch_size)
-		if (t + 1) % args.eval_freq == 0:
-			v=policy.test_v(replay_buffer, args.batch_size)
-			print("[steps] :", t+1,"v : ", sum(v)/float(args.batch_size))
-
 	replay_buffer_dot = copy.deepcopy(replay_buffer)
-	replay_buffer_dot.change_replay(policy.value)
-
-	policy.__init__(**kwargs)
-	for t in range(int(args.max_timesteps_Q)):
-		policy.train_v(replay_buffer_dot, args.batch_size)
-		if (t + 1) % args.eval_freq == 0:
-			v=policy.test_v(replay_buffer, args.batch_size)
-			print("[steps] :", t+1,"v : ", sum(v)/float(args.batch_size))
+	replay_buffer_dot.load_replay()
 
 
+	# total  = 1311000
+	# batch_size = 1000
+	# id = np.arange(total)
+	# acc, acc_prime = 0., 0.
+	# for i in range(int(total/batch_size)):
+	# 	if i != int(total/batch_size) - 1:
+	# 		batch = id[i*batch_size:(i+1)*batch_size]
+	# 	else:
+	# 		batch = id[i * batch_size:]
+	# 	state, action, next_state, reward, not_done, Return = replay_buffer_dot.get_sample_idx(batch)
+	# 	adv = policy_v.test_adv2(state, Return)
+	# 	adv_prime = policy_v_prime.test_adv2(state, Return)
+	# 	diff = adv_prime - adv
+	# 	w = np.clip(np.exp(adv/5)-1., 0., 0.5)
+	# 	w_prime = np.clip(np.exp(adv_prime/20), 0., 0.5)
+	# 	acc += np.sum(w>0)
+	# 	acc_prime += np.sum(w_prime>0)
+	# 	print("[steps] : %d | diff_w : %.2f" % (i + 1, np.sum(w_prime-w)))
+	# print("Final : %d | %d | %d"%(acc, acc_prime, acc-acc_prime))
 
+	# total  = 1990000
+	# batch_size = 1000
+	# id = np.arange(total)
+	# acc = 0.
+	# for i in range(int(total/batch_size)):
+	# 	if i != int(total/batch_size) - 1:
+	# 		batch = id[i*batch_size:(i+1)*batch_size]
+	# 	else:
+	# 		batch = id[i * batch_size:]
+	# 	state, action, next_state, reward, not_done, Return = replay_buffer.get_sample_idx(batch)
+	# 	adv = policy_v.test_adv2(state, Return)
+	# 	adv_prime = policy_v_prime.test_adv2(state, Return)
+	# 	diff = adv_prime - adv
+	# 	w = np.clip(np.exp(adv/5)-1., 0., 0.5)
+	# 	w_prime = np.clip(np.exp((adv_prime+10.6285) / 5) - 1., 0., 0.5)
+	# 	w_diff = np.sum(w_prime - w)
+	# 	acc += w_diff
+	# 	print("[steps] : %d | diff_w : %.2f" % (i + 1, w_diff))
+	# print("Final : ", acc)
 
-	evaluations = []
-	for t in range(int(args.max_timesteps)):
-		if t > args.clutch:
-			policy.train(replay_buffer_dot, t, args.batch_size, args.clutch)
-		else:
-			policy.train(replay_buffer, t, args.batch_size, args.clutch)
-		# Evaluate episode
-		if (t + 1) % args.eval_freq == 0:
-			print(f"Time steps: {t+1}")
-			evaluations.append(eval_policy(policy, args.env, args.seed, mean, std))
-			np.save(f"./results/{file_name}", evaluations)
-			if args.save_model: policy.save(f"./models/{file_name}")
+	# total = 1990000
+	# batch_size = 1000
+	# id = np.arange(total)
+	# for i in range(total):
+	# 	state, action, next_state, reward, not_done, Return = replay_buffer.sample(1)
+	# 	adv = policy_v.test_adv2(state, Return)
+	# 	adv_prime = policy_v_prime.test_adv2(state, Return)
+	# 	diff = adv_prime - adv
+	# 	w = np.clip(np.exp(adv / 5) - 1., 0., 0.5)
+	# 	w_prime = np.clip(np.exp(2.1257)*np.exp(adv_prime/ 5) - 1., 0., 0.5)
+	# 	# w = np.exp(adv / 5)
+	# 	# w_prime = np.exp(adv_prime / 5)
+	# 	print("[steps] : %d | v : %.2f | v' : %.2f | diff : %.2f | w_diff : %.2f"%(i+1, adv, adv_prime, diff, w_prime-w))
+
+	total = 1990000
+	batch_size = 1000
+	id = np.arange(total)
+	for i in range(total):
+		state, action, next_state, reward, not_done, Return = replay_buffer.sample(1)
+		adv = policy_v.test_adv2(state, Return)
+		adv_prime = policy_v_prime.test_adv2(state, Return)
+		diff = adv_prime - adv
+		w = np.clip(np.exp(adv / 5) - 1., 0., .5)
+		w_prime = np.clip(np.exp(adv_prime/5), 0., .5)
+		# w = np.exp(adv / 5)
+		# w_prime = np.exp(adv_prime / 5)
+		if w == 0 and w_prime > 0:
+			print("[steps] : %d | v : %.2f | v' : %.2f" % (i + 1, w, w_prime))

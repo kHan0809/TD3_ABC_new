@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import copy
-
+import pickle
 class ReplayBuffer(object):
 	def __init__(self, state_dim, action_dim, max_size=int(1e6)):
 		self.max_size = max_size
@@ -54,6 +54,15 @@ class ReplayBuffer(object):
 			torch.FloatTensor(self.Return[ind]).to(self.device),
 		)
 
+	def get_sample_idx(self, ind):
+		return (
+			torch.FloatTensor(self.state[ind]).to(self.device),
+			torch.FloatTensor(self.action[ind]).to(self.device),
+			torch.FloatTensor(self.next_state[ind]).to(self.device),
+			torch.FloatTensor(self.reward[ind]).to(self.device),
+			torch.FloatTensor(self.not_done[ind]).to(self.device),
+			self.Return[ind],
+		)
 
 	def convert_D4RL(self, dataset):
 		self.state = dataset['observations']
@@ -79,8 +88,20 @@ class ReplayBuffer(object):
 		self.size      = self.state.shape[0]
 		print(self.state.shape, self.action.shape, self.next_state.shape, self.reward.shape, self.not_done.shape,self.Return.shape)
 
-
-
+	def save_replay(self):
+		replay = dict(state=self.state,action=self.action,next_state=self.next_state,reward=self.reward,not_done=self.not_done,Return=self.Return,size=self.size)
+		with open('D_prime.pickle', 'wb') as fw:
+			pickle.dump(replay, fw)
+	def load_replay(self):
+		with open('D_prime.pickle', 'rb') as fr:
+			replay_loaded = pickle.load(fr)
+		self.state = replay_loaded["state"]
+		self.action = replay_loaded["action"]
+		self.next_state = replay_loaded["next_state"]
+		self.reward = replay_loaded["reward"]
+		self.not_done = replay_loaded["not_done"]
+		self.Return = replay_loaded["Return"]
+		self.size = replay_loaded["size"]
 
 
 	def normalize_states(self, eps = 1e-3):

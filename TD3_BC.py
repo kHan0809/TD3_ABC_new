@@ -143,7 +143,16 @@ class TD3_BC(object):
 		with torch.no_grad():
 			v_value = self.value(state)
 		return v_value
+	def test_adv(self, replay_buffer, batch_size=256):
+		state, action, next_state, reward, not_done, Return = replay_buffer.sample(batch_size)
+		with torch.no_grad():
+			v_value = self.value(state)
+		return Return - v_value
 
+	def test_adv2(self, state, Return):
+		with torch.no_grad():
+			v_value = self.value(state).cpu().detach().numpy()
+		return Return - v_value
 
 	def train(self, replay_buffer, t, batch_size=256, clutch=1e5):
 
@@ -185,7 +194,7 @@ class TD3_BC(object):
 				with torch.no_grad():
 					v_value = self.value(state)
 					rv = Return - v_value
-					weight = (torch.exp(rv/0.5)).clamp(0.0, 5.0)
+					weight = (torch.exp(rv/5.0)).clamp(0.0, 2.0)
 
 				# Compute actor loss
 				pi = self.actor(state)
@@ -223,6 +232,11 @@ class TD3_BC(object):
 		
 		torch.save(self.actor.state_dict(), filename + "_actor")
 		torch.save(self.actor_optimizer.state_dict(), filename + "_actor_optimizer")
+
+	def save_v(self,filename):
+		torch.save(self.value.state_dict(),filename)
+	def load_v(self,filename):
+		self.value.load_state_dict(torch.load(filename))
 
 
 	def load(self, filename):
