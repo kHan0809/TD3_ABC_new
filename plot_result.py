@@ -13,7 +13,7 @@ if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
 	# Experiment
 	parser.add_argument("--policy", default="TD3_BC")               # Policy name
-	parser.add_argument("--seed", default=0, type=int)              # Sets Gym, PyTorch and Numpy seeds
+	parser.add_argument("--seed", default=2, type=int)              # Sets Gym, PyTorch and Numpy seeds
 	args = parser.parse_args()
 
 	envs = [
